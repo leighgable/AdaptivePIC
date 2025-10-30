@@ -1,0 +1,59 @@
+# Compiled class files
+*.class
+
+# direnv
+.direnv/
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# Log Files
+*.log
+logs/
+
+# Maven
+target/
+resources/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+out/
+.idea/
+.project
+.classpath
+.settings/
+*.iml
+*.iws
+*.ipr
+*.vscode/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+target/
+
+# Temporary files
+*~
+*.bak
+*.swp
+.DS_Store # macOS specific
+Thumbs.db # Windows specific

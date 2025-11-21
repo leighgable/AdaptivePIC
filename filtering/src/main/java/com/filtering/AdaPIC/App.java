@@ -1,79 +1,81 @@
 package com.filtering.AdaPIC;
 
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.DoublePoint;
 import com.filtering.AdaPIC.CsvDataReader;
 import com.filtering.AdaPIC.Timer;
 import com.filtering.AdaPIC.RatingRecord;
+import com.filtering.AdaPIC.AdaptivePowerClustering;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.Random;
 
 
 public class App 
 {
     public static void main( String[] args )
     {
-        String filePath = null;
-        int linesToRead = 5;
+        String matrixFilePath = "src/test/resources/similarity.csv"; 
+        String mapFilePath = "src/test/resources/user_index_map.csv"; 
+        int k = 4; // Number of clusters
+        int maxIterations = 100; // Max Power Iterations (APIC)
         
-        CsvDataReader dataReader = new CsvDataReader();
-        if (args.length == 0) {
-            System.out.println("Usage: java AdaPIC <path_to_csv_file> [-n <number_of_lines>]");
-            return;
-        }
-        filePath = args[0];
+        try (Timer t = Timer.log("AdaptivePIC Time: ", TimeUnit.MILLISECONDS)) {
+            // Load Data
+            System.out.println("--- Data Loading and Normalization ---");
+            RealMatrix Wf_matrix = AdaptivePowerClustering.loadMatrixFromCsv(matrixFilePath);
+            int size = Wf_matrix.getRowDimension();
+            if (size == 0) return;
+            System.out.println("Matrix loaded successfully. Dimensions: " + size + "x" + size);
+            
+            // Normalize 
+            Wf_matrix = AdaptivePowerClustering.zScoreNormalize(Wf_matrix);
 
-        if (args.length > 1) {
-            if (args[1].equals("-n")) {
-                if (args.length > 2) {
-                    try {
-                        linesToRead = Integer.parseInt(args[2]);
-                        if (linesToRead <= 0) {
-                            System.out.println("Number of lines must be a positive integer. Using default (5).");
-                            linesToRead = 5;
-                        }
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid number of lines provided. Usings default (5).");
-                    }
-            } else {
-                    System.out.println("Missing number of lines after -n. Using default (5).");
+            System.out.println("\n--- Loading User ID Map ---");
+            List<String> userIdMap = AdaptivePowerClustering.loadUserIdMap(mapFilePath);
+            if (userIdMap.size() != size) {
+                System.err.println("ERROR: Matrix size (" + size + ") does not match map size (" + userIdMap.size() + "). Check your data files.");
+                return;
             }
-        } else {
-                    System.out.println("Unknown option: " + args[1] + ". Ignoring and using default lines (5).");
-                }
-            }
+            System.out.println("User ID map loaded successfully.");
 
-        System.out.println("Reading CSV from: " + filePath);
-        System.out.println("Printing first " + linesToRead + " lines.");
-
-        CsvDataReader reader = new CsvDataReader();
-        List<String[]> headData = reader.readCsvHeadOrAll(filePath, linesToRead);
-        for (String[] row : headData) {
-            System.out.println(Arrays.toString(row));
+            System.out.println("\n--- Running Adaptive Power Iteration Clustering (APIC) ---");
+            AdaptivePowerClustering apic = new AdaptivePowerClustering(Wf_matrix, k);
+            List<RealVector> KDominantVectors = apic.runBlockAPIC(maxIterations);
+            
+            apic.clusterAndOutput(KDominantVectors, userIdMap);
+            
+        } catch (IOException e) {
+            System.err.println("\n--- FATAL I/O ERROR ---");
+            System.err.println("Could not read the necessary files. Ensure Wf_matrix.csv and user_index_map.csv exist. Details: " + e.getMessage());
+            e.printStackTrace();
+            
+        } catch (NumberFormatException e) {
+            System.err.println("\n--- DATA PARSING ERROR ---");
+            System.err.println("A value in the CSV file could not be parsed as a number. Details: " + e.getMessage());
+            e.printStackTrace();
+            
+        } catch (Exception e) {
+            System.err.println("\n--- AN UNEXPECTED ERROR OCCURRED ---");
+            e.printStackTrace();
         }
-
-        List<String[]> allData = reader.readCsvHeadOrAll(filePath, null);
-
-        System.out.println(allData.size() + " records loaded -- all data.");
-                
-       
-        List<RatingRecord> allElectronicsRatings = RatingRecord.buildRecords(allData);
-
-        int minReviews = 30;
-        List<RatingRecord> filteredData = CsvDataReader.filterByMinRatings(allElectronicsRatings, minReviews);
-
-        System.out.println(filteredData.size() + " records loaded -- users with over " + minReviews + " ratings.");
         
-
         
-        // Timer t = Timer.log("OpenCSV read time: ", TimeUnit.MILLISECONDS);
+    } // Main
 
-          
-           
-    }
 
-}
+} // App
 
         
